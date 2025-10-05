@@ -1,0 +1,6 @@
+requests
+bs4
+selenium
+selenium-stealth
+webdriver-manager
+gallery-dl
