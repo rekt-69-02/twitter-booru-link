@@ -27,9 +27,7 @@ def extract_result(html_source):
 
     for result in results:
             pass
-    
-def search_saucenao(image):
-    
+
 class SauceNaoResult():
     def __init__(self, raw: bs4.Tag):
         self.raw:        dict = raw

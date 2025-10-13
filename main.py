@@ -69,12 +69,11 @@ def get_artist_url_yandere(url):
     else:
         return "None"
 
-def search_saucenao(image):
+def search_saucenao(username, image):
     driver.get("https://saucenao.com/")
     upload = driver.find_element(By.NAME, "file")
-    upload.send_keys(f"/home/user/git repo/x-booru-linker/gallery-dl/twitter/rizen114514/twitter_rizen114514_1858040463732912160_1.jpg")
+    upload.send_keys(f"/home/user/git repo/x-booru-linker/gallery-dl/twitter/{username}/{image}")
     driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
-    print(driver.page_source)
 
 def main():
     twitter_followings_json_file = input("please input file path:")
@@ -83,5 +82,28 @@ def main():
     for following in twitter_followings:
         urm.download_10_images(twitter_media_url=following["url"] + "/media/")
         file_path = f"/home/user/git repo/x-booru-linker/gallery-dl/{following["screen_name"]}/"
+            
         for img in os.listdir(file_path):
-            pass
+            search_saucenao(username=following["screen_name"], image=img)
+            raw_html = driver.page_source
+            results = urm.extract_result(raw_html)            
+            sauces = []
+            for result in results:
+                sauces.append(SauceNaoResult(result))
+
+            o = {
+                "twitter_url": following["url"]
+            }
+
+            for sauce in sauces:
+                for url in sauce.urls:
+                    if "danbooru.donmai.us" in url:
+                        o["danbooru_url"] = get_artist_url_danbooru(url)
+                    
+                    if "gelbooru.com" in url:
+                        o["gelbooru_url"] = get_artist_url_gelbooru(url)
+
+                    if "yande.re" in url:
+                        o["yandere_url"] = get_artist_url_yandere(url)
+
+            
