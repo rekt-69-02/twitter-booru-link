@@ -11,6 +11,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from . import urm
+from .urm import SauceNaoResult
 
 options = Options()
 options.add_argument("start-maximized")
@@ -30,11 +32,6 @@ stealth(driver=driver,
         webgl_vendor="Intel Inc.",
         renderer="Intel Iris OpenGL Engine",
         fix_hairline=True,)
-
-def download_10_images(twitter_media_url):
-    gallery_dl_command = ["gallery-dl", "--range", "21-30", "-d", "./gallery-dl/", "--cookies-from-browser", "vivaldi"]
-    gallery_dl_command.append(twitter_media_url)
-    subprocess.run(gallery_dl_command)
 
 def get_artist_url_danbooru(url):
     driver.get(url=url)
@@ -71,10 +68,20 @@ def get_artist_url_yandere(url):
         return tag.get_attribute("href")
     else:
         return "None"
-    
-class SauceNaoResult():
-    def __init__(self, html_element):
-        self.similarity = None
-        self.urls = []
 
-    def 
+def search_saucenao(image):
+    driver.get("https://saucenao.com/")
+    upload = driver.find_element(By.NAME, "file")
+    upload.send_keys(f"/home/user/git repo/x-booru-linker/gallery-dl/twitter/rizen114514/twitter_rizen114514_1858040463732912160_1.jpg")
+    driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
+    print(driver.page_source)
+
+def main():
+    twitter_followings_json_file = input("please input file path:")
+    twitter_followings = [x for x in json.load(open(twitter_followings_json_file, 'r', encoding="utf8"))]
+
+    for following in twitter_followings:
+        urm.download_10_images(twitter_media_url=following["url"] + "/media/")
+        file_path = f"/home/user/git repo/x-booru-linker/gallery-dl/{following["screen_name"]}/"
+        for img in os.listdir(file_path):
+            pass
