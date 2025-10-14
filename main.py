@@ -8,6 +8,7 @@ from webdriver_manager.core.os_manager import ChromeType
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from saucenao import search_saucenao, extract_saucenao_result, SauceNaoResult
+from iqdb import search_iqdb, extract_iqdb_result
 
 options = Options()
 options.add_argument("start-maximized")
