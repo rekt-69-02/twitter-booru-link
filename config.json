@@ -1,0 +1,28 @@
+{
+    "extractor":{
+	"sleep": 1,
+	"parent-directory": false,
+        "twitter":{
+            "users": "https://twitter.com/{legacy[screen_name]}",
+            "text-tweets":true,
+            "quoted":true,
+            "retweets":true,
+            "logout":true,
+            "replies":true,
+            "filename": "twitter_{author[name]}_{tweet_id}_{num}.{extension}",
+            "directory":{
+                "quote_id   != 0": ["twitter", "{quote_by}"  , "quote-retweets"],
+                "retweet_id != 0": ["twitter", "{user[name]}", "retweets"  ],
+                ""               : ["twitter", "{user[name]}"              ]
+            },
+            "postprocessors":[
+                {"name": "metadata", "event": "post", "filename": "twitter_{author[name]}_{tweet_id}_main.json"}
+            ]
+        }   
+    },
+    "output": {
+        "metadata": true,
+        "mtime": true
+    }
+}
+
