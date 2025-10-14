@@ -90,7 +90,7 @@ def search_saucenao(image_path):
             file.write(driver.page_source)
 
 def download_10_images(twitter_media_url):
-    gallery_dl_command = ["gallery-dl", "--range", "21-30", "-d", "./gallery-dl/", "--cookies-from-browser", "firefox", "--config", "./config.json"]
+    gallery_dl_command = ["gallery-dl", "--range", "11-50", "-d", "./gallery-dl/", "--cookies-from-browser", "firefox", "--config", "./config.json"]
     gallery_dl_command.append(twitter_media_url)
     subprocess.run(gallery_dl_command)
 
