@@ -1,5 +1,5 @@
-import json, os, subprocess, bs4, pathlib
-import selenium, urllib.parse, time
+import json, os, subprocess, bs4, pathlib, logging
+import selenium, urllib.parse, time, datetime, requests
 from selenium import webdriver
 from selenium_stealth import stealth
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,6 +10,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 
 options = Options()
 options.add_argument("start-maximized")
@@ -19,7 +20,7 @@ options.add_argument('--disable-dev-shm-usage')
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 driver = webdriver.Chrome(service=Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()), options=options)
-valiable_image_extensions = ["jpg", "jpeg", "png", "webp"]
+avaliable_image_extensions = ["jpg", "jpeg", "png", "webp"]
 headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}
 
 stealth(driver=driver,
@@ -40,7 +41,7 @@ def get_artist_url_danbooru(url):
             href = e.get_attribute("href")
             return href
         else:
-            return "None"
+            return None
     except NoSuchElementException:
         pass
     
@@ -53,7 +54,7 @@ def get_artist_url_gelbooru(url):
             href = e.get_attribute("href")
             return href
         else:
-            return "None"
+            return None
     except NoSuchElementException:
         print(url)
 
@@ -64,57 +65,64 @@ def get_artist_url_yandere(url):
     if tag_color == "rgba(204, 204, 0, 1)":
         return tag.get_attribute("href")
     else:
-        return "None"
+        return None
 
-def search_saucenao(username, image):
-    driver.get("https://saucenao.com/")
-    upload = driver.find_element(By.NAME, "file")
-    upload.send_keys(f"{pathlib.Path().resolve()}/gallery-dl/twitter/{username}/{image}")
-    driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
+def search_saucenao_requests(image_path):
+    url = "https://saucenao.com/search.php?hide=0"
+    files = {"file": open(image_path, "rb")}
+    resp = requests.post(url, files=files, headers=headers)
+    return resp.text
+
+def search_saucenao(image_path):
+    try:
+        driver.get("https://saucenao.com/")
+        upload = driver.find_element(By.NAME, "file")
+        driver.execute_script("arguments[0].style.display = 'block';", upload)
+        upload.send_keys(image_path)
+        driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
+        WebDriverWait(driver, 10).until(
+            expected_conditions.presence_of_element_located((By.CLASS_NAME, "result"))
+        )
+
+        return driver.page_source
+    except TimeoutException:
+        with open(f"{datetime.datetime.now()}.html", "w+") as file:
+            file.write(driver.page_source)
 
 def download_10_images(twitter_media_url):
-    gallery_dl_command = ["gallery-dl", "--range", "21-30", "-d", "./gallery-dl/", "--cookies-from-browser", "vivaldi"]
+    gallery_dl_command = ["gallery-dl", "--range", "21-30", "-d", "./gallery-dl/", "--cookies-from-browser", "firefox", "--config", "./config.json"]
     gallery_dl_command.append(twitter_media_url)
     subprocess.run(gallery_dl_command)
 
 def extract_result(html_source):
     b = bs4.BeautifulSoup(html_source, "html.parser")
     results = b.find_all("div", {"class": "result"})
-    i = None
-    for result in results:
-        try:
-            if result.attrs["id"] == "result-hidden-notification":
-                i = results.index(result)
-        except KeyError:
-            continue
-    
-    try:
-        while results[i]:
-            results.pop(i)
-    except IndexError:
-        pass
-
-    if results == []:
-        return results
-
-    for result in results:
-             
+    results = [r for r in results if r.get("id") != "result-hidden-notification"]
+    return results
 
 class SauceNaoResult():
-    def __init__(self, raw: bs4.Tag):
-        self.raw:        dict = raw
-        self.similarity: float = float(self._get_similarity(raw))
-        self.urls:       list[str] = self._get_urls(raw)
+    def __init__(self, raw):
+        self.raw = raw
+        self.similarity = self._get_similarity()
+        self.urls = self._get_urls()
 
-    def _get_similarity(self, raw: bs4.Tag) -> float:
-        s = raw.find("div", {"class": "resultsimilarityinfo"})
-        return s.text
-    
-    def _get_urls(self, raw: bs4.Tag) -> list:
+    def _get_similarity(self) -> float:
+        s = self.raw.find("div", {"class": "resultsimilarityinfo"})
+        if not s:
+            return 0.0
+        s = s.text.replace("%", "").strip()
+        try:
+            return float(s)
+        except ValueError:
+            return 0.0
+
+    def _get_urls(self) -> list[str]:
         urls = []
-        r = raw.find("div", {"class": "resultmiscinfo"})
-        for u in r.find_all("a"):
-            urls.append(u.attrs["href"])
+        miscinfo = self.raw.find("div", {"class": "resultmiscinfo"})
+        if not miscinfo:
+            return urls
+        for a in miscinfo.find_all("a", href=True):
+            urls.append(a["href"])
         return urls
 
 def main():
@@ -130,12 +138,18 @@ def main():
             }
         
         for img in os.listdir(file_path):
-            search_saucenao(username=following["screen_name"], image=img)
-            raw_html = driver.page_source
+            
+            if not (img.split(".")[-1] in avaliable_image_extensions):
+                continue
+
+            raw_html = search_saucenao_requests(file_path + img)
             results = extract_result(raw_html)            
             sauces = []
             for result in results:
-                sauces.append(SauceNaoResult(result))
+                r = SauceNaoResult(result)
+                if r.similarity < 70:
+                    continue
+                sauces.append(r)
 
             if o.get("danbooru_url") and o.get("gelbooru_url") and o.get("yandere_url"):
                 break
@@ -151,10 +165,11 @@ def main():
                     if "yande.re" in url and not o.get("yandere_url"):
                         o["yandere_url"] = get_artist_url_yandere(url)
 
-            with open("output.json", "w+") as file:
+            with open("output.json", "r") as file:
                 j = json.load(file)
+            with open("output.json", "a") as file2:
                 j[following["screen_name"]] = o
-                json.dump(j, file)
+                json.dump(j, file2)
 
 if __name__ == "__main__":
     main()
