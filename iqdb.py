@@ -6,6 +6,9 @@ def search_iqdb(image_path):
     url = "https://iqdb.org/"
     files = {"file": open(image_path, "rb")}
     resp = requests.post(url, files=files, headers=headers)
+    if resp.status_code != 200:
+        print(f"iqdb search failed: {image_path}")
+        return None
     return resp.text
 
 def extract_iqdb_result(html_source):

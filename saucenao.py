@@ -6,13 +6,20 @@ def search_saucenao(image_path):
     url = "https://saucenao.com/search.php?hide=0"
     files = {"file": open(image_path, "rb")}
     resp = requests.post(url, files=files, headers=headers)
+    if resp.status_code != 200:
+        return None
     return resp.text
 
 def extract_saucenao_result(html_source):
     b = bs4.BeautifulSoup(html_source, "html.parser")
     results = b.find_all("div", {"class": "result"})
-    results = [r for r in results if r.get("id") != "result-hidden-notification"]
-    return results
+    results = [SauceNaoResult(r) for r in results if r.get("id") != "result-hidden-notification"]
+    r = []
+    for res in results:
+        if res.similarity > 70:
+            for n in res.urls:
+                r.append(n)
+    return r
 
 class SauceNaoResult():
     def __init__(self, raw):
