@@ -90,10 +90,7 @@ def main():
                     "twitter_url": f'{following["url"]}'
                 }
             else:
-                o = j.get(following["screen_name"])
-                if len(o) >= 3:
-                    print(following["screen_name"])
-                    continue
+                continue
 
         download_10_images(twitter_media_url=url)
 
