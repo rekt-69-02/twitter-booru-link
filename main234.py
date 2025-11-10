@@ -60,13 +60,13 @@ def get_artist_url_gelbooru(url):
 
 def get_artist_url_yandere(url):
     driver.get(url=url)
-    tag = driver.find_element(By.XPATH, "/html/body/div[8]/div[1]/div[3]/div[2]/ul/li[1]/a[2]")
-    tag_color = tag.value_of_css_property("color")
-    if tag_color == "rgba(204, 204, 0, 1)":
-        return tag.get_attribute("href")
-    else:
-        print(f"get yandere url failed: {url}")
-        return None
+    try:
+        tag_artist = driver.find_element(By.XPATH, "/html/body/div[8]/div[1]/div[4]/div[2]/ul/li[1]")
+        a_tag = tag_artist.find_elements(By.XPATH, ".//*")
+        a = "https://yande.re" + a_tag[-2].get_attribute("href")
+        return a
+    except NoSuchElementException:
+        print(f"error: get yande.re url failed: {url}")
 
 def download_10_images(twitter_media_url):
     gallery_dl_command = ["gallery-dl", "--range", "11-20", "-d", "./gallery-dl/", "--cookies-from-browser", "firefox", "--config", "./config.json"]
@@ -94,9 +94,12 @@ def main():
 
         download_10_images(twitter_media_url=url)
 
+        if not os.path.isdir(file_path):
+            continue
+
         for img in os.listdir(file_path):
 
-            if len(o) >= 4:
+            if len(o) >= 3:
                 break
 
             if not (img.split(".")[-1] in avaliable_image_extensions):
@@ -126,6 +129,7 @@ def main():
                     o["gelbooru_url"] = get_artist_url_gelbooru(url)
 
                 if "yande.re" in url and not o.get("yandere_url"):
+                    print(url)
                     o["yandere_url"] = get_artist_url_yandere(url)
 
             with open("output.json", "r") as file:

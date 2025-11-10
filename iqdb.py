@@ -14,5 +14,9 @@ def search_iqdb(image_path):
 def extract_iqdb_result(html_source):
     b = bs4.BeautifulSoup(html_source, "html.parser")
     result = b.find_all("table")[1]
-    urls = ["https:" + x.attrs.get("href") for x in result.find_all("a")]
+    urls = [x.attrs.get("href") for x in result.find_all("a")]
+    for url in urls:
+        if "https:" not in url:
+            urls[urls.index(url)] = "https:" + url
+    print(urls)
     return urls
